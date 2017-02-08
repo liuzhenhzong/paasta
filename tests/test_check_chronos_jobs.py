@@ -19,13 +19,14 @@ def test_compose_monitoring_overrides_for_service(mock_get_runbook):
         Mock(
             service='myservice',
             get_monitoring=Mock(return_value={}),
+            get_schedule_interval_in_seconds=Mock(return_value=28800),
         ),
         'soa_dir'
     ) == {
         'alert_after': '2m',
         'check_every': '1m',
         'runbook': 'myrunbook',
-        'realert_every': -1
+        'realert_every': 480
     }
 
 
@@ -36,13 +37,14 @@ def test_compose_monitoring_overrides_for_service_respects_alert_after(mock_get_
         Mock(
             service='myservice',
             get_monitoring=Mock(return_value={'alert_after': '10m'}),
+            get_schedule_interval_in_seconds=Mock(return_value=28800),
         ),
         'soa_dir'
     ) == {
         'alert_after': '10m',
         'check_every': '1m',
         'runbook': 'myrunbook',
-        'realert_every': -1
+        'realert_every': 480
     }
 
 
@@ -56,7 +58,8 @@ def test_compose_monitoring_overrides_for_realert_every(mock_read_monitoring, mo
     assert check_chronos_jobs.compose_monitoring_overrides_for_service(
         Mock(
             service='myservice',
-            get_monitoring=Mock(return_value={'realert_every': 5})
+            get_monitoring=Mock(return_value={'realert_every': 5}),
+            get_schedule_interval_in_seconds=Mock(return_value=28800),
         ),
         'soa_dir'
     ) == {
@@ -70,7 +73,23 @@ def test_compose_monitoring_overrides_for_realert_every(mock_read_monitoring, mo
     assert check_chronos_jobs.compose_monitoring_overrides_for_service(
         Mock(
             service='myservice',
-            get_monitoring=Mock(return_value={})
+            get_monitoring=Mock(return_value={}),
+            get_schedule_interval_in_seconds=Mock(return_value=28800),
+        ),
+        'soa_dir'
+    ) == {
+        'alert_after': '2m',
+        'check_every': '1m',
+        'runbook': 'myrunbook',
+        'realert_every': 480,  # this value shouldn't be overridden by read_monitoring (i.e. by monitoring.yaml).
+    }
+
+    mock_read_monitoring.return_value = {'runbook': 'myrunbook', 'realert_every': 10}
+    assert check_chronos_jobs.compose_monitoring_overrides_for_service(
+        Mock(
+            service='myservice',
+            get_monitoring=Mock(return_value={}),
+            get_schedule_interval_in_seconds=Mock(return_value=None),
         ),
         'soa_dir'
     ) == {

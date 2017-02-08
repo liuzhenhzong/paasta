@@ -34,6 +34,16 @@ def parse_args():
     return args
 
 
+def _guess_realert_every(chronos_job_config):
+    """Returns the job interval (in minutes) or None if the job has no interval.
+
+    As we run check_chronos_jobs once a minute, we are going to skip
+    all re-alert attempts until the next scheduled run of the job.
+    """
+    interval = chronos_job_config.get_schedule_interval_in_seconds()
+    return (interval // 60) if interval is not None else None
+
+
 def compose_monitoring_overrides_for_service(chronos_job_config, soa_dir):
     """ Compose a group of monitoring overrides """
     monitoring_overrides = chronos_job_config.get_monitoring()
@@ -42,8 +52,14 @@ def compose_monitoring_overrides_for_service(chronos_job_config, soa_dir):
     monitoring_overrides['check_every'] = '1m'
     monitoring_overrides['runbook'] = monitoring_tools.get_runbook(
         monitoring_overrides, chronos_job_config.service, soa_dir=soa_dir)
+
+    if 'realert_every' not in monitoring_overrides:
+        guessed_realert_every = _guess_realert_every(chronos_job_config)
+        if guessed_realert_every is not None:
+            monitoring_overrides['realert_every'] = guessed_realert_every
     monitoring_overrides['realert_every'] = monitoring_tools.get_realert_every(
         monitoring_overrides, chronos_job_config.service, soa_dir=soa_dir)
+
     return monitoring_overrides
 
 
