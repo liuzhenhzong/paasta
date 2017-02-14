@@ -327,49 +327,6 @@ class TestMarathonTools:
             get_namespaces_patch.assert_any_call('rid2', soa_dir)
             assert get_namespaces_patch.call_count == 2
 
-    def test_get_proxy_port_for_instance(self):
-        name = 'thats_no_moon'
-        instance = 'thats_a_space_station'
-        cluster = 'shot_line'
-        soa_dir = 'drink_up'
-        namespace = 'thirsty_mock'
-        fake_port = 1234567890
-        fake_nerve = long_running_service_tools.ServiceNamespaceConfig({'proxy_port': fake_port})
-        with contextlib.nested(
-            mock.patch('paasta_tools.marathon_tools.read_registration_for_service_instance',
-                       autospec=True, return_value=compose_job_id(name, namespace)),
-            mock.patch('paasta_tools.marathon_tools.load_service_namespace_config',
-                       autospec=True, return_value=fake_nerve)
-        ) as (
-            read_ns_patch,
-            read_config_patch
-        ):
-            actual = marathon_tools.get_proxy_port_for_instance(name, instance, cluster, soa_dir)
-            assert fake_port == actual
-            read_ns_patch.assert_called_once_with(name, instance, cluster, soa_dir)
-            read_config_patch.assert_called_once_with(name, namespace, soa_dir)
-
-    def test_get_proxy_port_for_instance_defaults_to_none(self):
-        name = 'thats_no_moon'
-        instance = 'thats_a_space_station'
-        cluster = 'shot_line'
-        soa_dir = 'drink_up'
-        namespace = 'thirsty_mock'
-        expected = None
-        with contextlib.nested(
-            mock.patch('paasta_tools.marathon_tools.read_registration_for_service_instance',
-                       autospec=True, return_value=compose_job_id(name, namespace)),
-            mock.patch('paasta_tools.marathon_tools.load_service_namespace_config',
-                       autospec=True, return_value={})
-        ) as (
-            read_ns_patch,
-            read_config_patch
-        ):
-            actual = marathon_tools.get_proxy_port_for_instance(name, instance, cluster, soa_dir)
-            assert expected == actual
-            read_ns_patch.assert_called_once_with(name, instance, cluster, soa_dir)
-            read_config_patch.assert_called_once_with(name, namespace, soa_dir)
-
     def test_read_service_namespace_config_exists(self):
         name = 'eman'
         namespace = 'ecapseman'
@@ -716,15 +673,11 @@ class TestMarathonTools:
             mock.patch('paasta_tools.marathon_tools.marathon_services_running_here',
                        autospec=True,
                        return_value=fake_marathon_services),
-            mock.patch('paasta_tools.marathon_tools.read_all_registrations_for_service_instance',
-                       autospec=True,
-                       side_effect=lambda *args, **kwargs: registrations.pop()),
             mock.patch('paasta_tools.marathon_tools.load_service_namespace_config',
                        autospec=True,
                        side_effect=lambda *args, **kwargs: nerve_dicts.pop()),
         ) as (
             mara_srvs_here_patch,
-            get_namespace_patch,
             read_ns_config_patch,
         ):
             actual = marathon_tools.get_marathon_services_running_here_for_nerve(cluster, soa_dir)
@@ -2412,21 +2365,6 @@ def test_marathon_service_config_get_desired_state_human_invalid_desired_state()
         fake_desired_state = desired_state_human(fake_marathon_service_config.get_desired_state(),
                                                  fake_marathon_service_config.get_instances())
         assert 'Unknown (desired_state: fake-state)' in fake_desired_state
-
-
-def test_read_registration_for_service_instance_no_cluster():
-    mock_get_cluster = mock.Mock()
-    with contextlib.nested(
-            mock.patch('paasta_tools.marathon_tools.load_marathon_service_config',
-                       autospec=True),
-            mock.patch('paasta_tools.marathon_tools.load_system_paasta_config', autospec=True,
-                       return_value=mock.Mock(get_cluster=mock_get_cluster)),
-    ) as (
-        _,
-        _,
-    ):
-        marathon_tools.read_registration_for_service_instance(mock.Mock(), mock.Mock())
-        mock_get_cluster.assert_called_once_with()
 
 
 def test_get_app_queue_status():

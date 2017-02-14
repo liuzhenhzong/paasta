@@ -23,6 +23,7 @@ import traceback
 from pyramid.view import view_config
 
 from paasta_tools import marathon_tools
+from paasta_tools import native_mesos_scheduler
 from paasta_tools.api import settings
 from paasta_tools.api.views.exception import ApiFailure
 from paasta_tools.cli.cmds.status import get_actual_deployments
@@ -81,6 +82,16 @@ def marathon_instance_status(instance_status, service, instance, verbose):
     return mstatus
 
 
+def paasta_native_instance_status(instance_status, service, instance, verbose):
+    pnstatus = {}
+
+    job_config = native_mesos_scheduler.load_paasta_native_job_config(
+        service, instance, settings.cluster, soa_dir=settings.soa_dir)
+
+    pnstatus['desired_state'] = job_config.get_desired_state()
+    pnstatus['bounce_method'] = job_config.get_bounce_method()
+
+
 @view_config(route_name='service.instance.status', request_method='GET', renderer='json')
 def instance_status(request):
     service = request.swagger_data.get('service')
@@ -111,6 +122,8 @@ def instance_status(request):
             instance_status['marathon'] = marathon_instance_status(instance_status, service, instance, verbose)
         elif instance_type == 'chronos':
             instance_status['chronos'] = chronos_instance_status(instance_status, service, instance, verbose)
+        elif instance_type == 'paasta_native':
+            instance_status['paasta_native'] = paasta_native_instance_status(instance_status, instance, verbose)
         else:
             error_message = 'Unknown instance_type %s of %s.%s' % (instance_type, service, instance)
             raise ApiFailure(error_message, 404)

@@ -552,63 +552,6 @@ def deformat_job_id(job_id):
     return decompose_job_id(job_id)
 
 
-def read_all_registrations_for_service_instance(service, instance, cluster=None, soa_dir=DEFAULT_SOA_DIR):
-    """Retreive all registrations as fully specified name.instance pairs
-    for a particular service instance.
-
-    For example, the 'main' paasta instance of the 'test' service may register
-    in the 'test.main' namespace as well as the 'other_svc.main' namespace.
-
-    If one is not defined in the config file, returns a list containing
-    name.instance instead.
-    """
-    if not cluster:
-        cluster = load_system_paasta_config().get_cluster()
-
-    marathon_service_config = load_marathon_service_config(
-        service, instance, cluster, load_deployments=False, soa_dir=soa_dir
-    )
-    return marathon_service_config.get_registrations()
-
-
-def read_registration_for_service_instance(service, instance, cluster=None, soa_dir=DEFAULT_SOA_DIR):
-    """Retreive a service instance's primary registration for a particular
-    service instance.
-
-    This is the service and namespace that clients ought talk to, as well as
-    paasta ought monitor. In this context "primary" just means the first one
-    in the list of registrations.
-
-    If registrations are not defined in the marathon config file, returns
-    name.instance instead.
-
-    :returns a fully qualified service.instance registration
-    """
-    return read_all_registrations_for_service_instance(
-        service, instance, cluster, soa_dir
-    )[0]
-
-
-def get_proxy_port_for_instance(name, instance, cluster=None, soa_dir=DEFAULT_SOA_DIR):
-    """Get the proxy_port defined in the first namespace configuration for a
-    service instance.
-
-    This means that the namespace first has to be loaded from the service instance's
-    configuration, and then the proxy_port has to loaded from the smartstack configuration
-    for that namespace.
-
-    :param name: The service name
-    :param instance: The instance of the service
-    :param cluster: The cluster to read the configuration for
-    :param soa_dir: The SOA config directory to read from
-    :returns: The proxy_port for the service instance, or None if not defined"""
-    registration = read_registration_for_service_instance(name, instance, cluster, soa_dir)
-    service, namespace, _, __ = decompose_job_id(registration)
-    nerve_dict = load_service_namespace_config(
-        service=service, namespace=namespace, soa_dir=soa_dir)
-    return nerve_dict.get('proxy_port')
-
-
 def get_all_namespaces_for_service(service, soa_dir=DEFAULT_SOA_DIR, full_name=True):
     """Get all the smartstack namespaces listed for a given service name.
 
@@ -680,9 +623,10 @@ def get_marathon_services_running_here_for_nerve(cluster, soa_dir):
     nerve_list = []
     for name, instance, port in marathon_services:
         try:
-            registrations = read_all_registrations_for_service_instance(
-                name, instance, cluster, soa_dir
+            marathon_service_config = load_marathon_service_config(
+                name, instance, cluster, load_deployments=False, soa_dir=soa_dir
             )
+            registrations = marathon_service_config.get_registrations()
             for registration in registrations:
                 reg_service, reg_namespace, _, __ = decompose_job_id(registration)
                 nerve_dict = load_service_namespace_config(

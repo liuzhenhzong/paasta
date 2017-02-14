@@ -74,6 +74,28 @@ class LongRunningServiceConfig(InstanceConfig):
 
         return registrations or [compose_job_id(self.service, self.instance)]
 
+    def get_primary_registration(self):
+        return self.get_registrations()[0]
+
+    def read_proxy_port(self, soa_dir=DEFAULT_SOA_DIR):
+        """Get the proxy_port defined in the first namespace configuration for a
+        service instance.
+
+        This means that the namespace first has to be loaded from the service instance's
+        configuration, and then the proxy_port has to loaded from the smartstack configuration
+        for that namespace.
+
+        :param name: The service name
+        :param instance: The instance of the service
+        :param cluster: The cluster to read the configuration for
+        :param soa_dir: The SOA config directory to read from
+        :returns: The proxy_port for the service instance, or None if not defined"""
+        registration = self.get_primary_registration()
+        service, namespace, _, __ = decompose_job_id(registration)
+        nerve_dict = load_service_namespace_config(
+            service=service, namespace=namespace, soa_dir=soa_dir)
+        return nerve_dict.get('proxy_port')
+
     def get_healthcheck_uri(self, service_namespace_config):
         return self.config_dict.get('healthcheck_uri', service_namespace_config.get_healthcheck_uri())
 

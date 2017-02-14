@@ -265,9 +265,7 @@ def status_smartstack_backends(service, instance, job_config, cluster, tasks, ex
     return: A newline separated string of the smarststack backend status
     """
     output = []
-    service_instance = marathon_tools.read_registration_for_service_instance(
-        service, instance, cluster
-    )
+    service_instance = job_config.get_primary_registration()
 
     service_namespace_config = marathon_tools.load_service_namespace_config(
         service=service, namespace=instance, soa_dir=soa_dir)
@@ -392,7 +390,7 @@ def perform_command(command, service, instance, cluster, verbose, soa_dir, app_i
 
     normal_instance_count = job_config.get_instances()
     normal_smartstack_count = marathon_tools.get_expected_instance_count_for_namespace(service, instance, cluster)
-    proxy_port = marathon_tools.get_proxy_port_for_instance(service, instance, cluster, soa_dir=soa_dir)
+    proxy_port = job_config.read_proxy_port()
 
     client = marathon_tools.get_marathon_client(marathon_config.get_url(), marathon_config.get_username(),
                                                 marathon_config.get_password())

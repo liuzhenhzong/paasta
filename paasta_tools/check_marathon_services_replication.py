@@ -312,7 +312,7 @@ def check_service_replication(client, service, instance, cluster, soa_dir, syste
     log.info("Expecting %d total tasks for %s" % (expected_count, job_id))
     job_config = marathon_tools.load_marathon_service_config(
         service, instance, cluster, load_deployments=False, soa_dir=soa_dir)
-    proxy_port = job_config.get_proxy_port(soa_dir=soa_dir)
+    proxy_port = job_config.read_proxy_port(soa_dir=soa_dir)
     if proxy_port is not None:
         check_smartstack_replication_for_instance(
             service=service,

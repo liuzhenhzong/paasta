@@ -522,7 +522,7 @@ def test_check_service_replication_for_normal_smartstack():
     fake_system_paasta_config = SystemPaastaConfig({}, '/fake/config')
     with mock.patch(
         'paasta_tools.marathon_tools.load_marathon_service_config',
-        autospec=True, return_value=mock.Mock(get_proxy_port=mock.Mock(return_value=666))
+        autospec=True, return_value=mock.Mock(read_proxy_port=mock.Mock(return_value=666))
     ), mock.patch(
         'paasta_tools.marathon_tools.get_expected_instance_count_for_namespace',
         autospec=True, return_value=100,
@@ -552,13 +552,14 @@ def test_check_service_replication_for_non_smartstack():
     with mock.patch(
         'paasta_tools.marathon_tools.load_marathon_service_config',
         autospec=True,
-    ), mock.patch(
+    ) as mock_load_marathon_service_config, mock.patch(
         'paasta_tools.marathon_tools.get_expected_instance_count_for_namespace',
         autospec=True, return_value=100,
     ), mock.patch(
         'paasta_tools.check_marathon_services_replication.check_healthy_marathon_tasks_for_service_instance',
         autospec=True,
     ) as mock_check_healthy_marathon_tasks:
+        mock_load_marathon_service_config.return_value = mock.Mock(read_proxy_port=mock.Mock(return_value=None))
         mock_client = mock.Mock()
         check_marathon_services_replication.check_service_replication(
             client=mock_client, service=service, instance=instance, cluster=cluster, soa_dir=None,
