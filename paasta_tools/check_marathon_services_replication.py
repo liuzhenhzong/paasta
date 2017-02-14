@@ -124,9 +124,8 @@ def check_smartstack_replication_for_instance(
     """
     full_name = compose_job_id(service, instance)
 
-    primary_registration = marathon_tools.read_registration_for_service_instance(
-        service, instance, soa_dir=soa_dir
-    )
+    job_config = marathon_tools.load_marathon_service_config(service, instance, cluster)
+    primary_registration = job_config.get_primary_registration()
 
     if primary_registration != full_name:
         log.debug(
@@ -135,7 +134,6 @@ def check_smartstack_replication_for_instance(
         )
         return
 
-    job_config = marathon_tools.load_marathon_service_config(service, instance, cluster)
     crit_threshold = job_config.get_replication_crit_percentage()
     monitoring_blacklist = job_config.get_monitoring_blacklist()
     log.info('Checking instance %s in smartstack', full_name)
@@ -312,7 +310,9 @@ def check_service_replication(client, service, instance, cluster, soa_dir, syste
     if expected_count is None:
         return
     log.info("Expecting %d total tasks for %s" % (expected_count, job_id))
-    proxy_port = marathon_tools.get_proxy_port_for_instance(service, instance, soa_dir=soa_dir)
+    job_config = marathon_tools.load_marathon_service_config(
+        service, instance, cluster, load_deployments=False, soa_dir=soa_dir)
+    proxy_port = job_config.get_proxy_port(soa_dir=soa_dir)
     if proxy_port is not None:
         check_smartstack_replication_for_instance(
             service=service,

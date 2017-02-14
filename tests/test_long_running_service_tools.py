@@ -21,6 +21,7 @@ from pytest import raises
 
 from paasta_tools import long_running_service_tools
 from paasta_tools.utils import InvalidInstanceConfig
+from paasta_tools.utils import compose_job_id
 
 
 class TestLongRunningServiceConfig(object):
@@ -231,6 +232,68 @@ class TestLongRunningServiceConfig(object):
             branch_dict={'desired_state': 'start'},
         )
         assert fake_conf.get_instances() == 0
+
+    def test_get_registrations_has_value(self):
+        name = 'dont_worry'
+        instance = 'im_a_professional'
+        cluster = 'andromeda'
+        namespaces = ['spacename', 'spaceiscool', 'rocketsarecooler']
+        registrations = [compose_job_id(name, ns) for ns in namespaces]
+        job_config = long_running_service_tools.LongRunningServiceConfig(
+            service=name,
+            cluster=cluster,
+            instance=instance,
+            config_dict={'registrations': registrations},
+            branch_dict={},
+        )
+        actual_registrations = job_config.get_registrations()
+        assert set(actual_registrations) == set(registrations)
+
+    def test_read_proxy_port(self):
+        name = 'thats_no_moon'
+        instance = 'thats_a_space_station'
+        cluster = 'shot_line'
+        soa_dir = 'drink_up'
+        namespace = 'thirsty_mock'
+        fake_port = 1234567890
+        fake_nerve = long_running_service_tools.ServiceNamespaceConfig({'proxy_port': fake_port})
+        job_config = long_running_service_tools.LongRunningServiceConfig(
+            name, cluster, instance,
+            {"registrations": [compose_job_id(name, namespace)]},
+            {},
+        )
+        with contextlib.nested(
+            mock.patch('paasta_tools.long_running_service_tools.load_service_namespace_config',
+                       autospec=True, return_value=fake_nerve)
+        ) as (
+            read_config_patch,
+        ):
+            actual = job_config.read_proxy_port(soa_dir=soa_dir)
+            assert fake_port == actual
+            read_config_patch.assert_called_once_with(name, namespace, soa_dir)
+
+    def test_get_proxy_port_for_instance_defaults_to_none(self):
+        name = 'thats_no_moon'
+        instance = 'thats_a_space_station'
+        cluster = 'shot_line'
+        soa_dir = 'drink_up'
+        namespace = 'thirsty_mock'
+        expected = None
+        job_config = long_running_service_tools.LongRunningServiceConfig(
+            name, cluster, instance,
+            {"registrations": [compose_job_id(name, namespace)]},
+            {},
+        )
+
+        with contextlib.nested(
+            mock.patch('paasta_tools.long_running_service_tools.load_service_namespace_config',
+                       autospec=True, return_value={})
+        ) as (
+            read_config_patch,
+        ):
+            actual = job_config.read_proxy_port(soa_dir=soa_dir)
+            assert expected == actual
+            read_config_patch.assert_called_once_with(name, namespace, soa_dir)
 
 
 class TestServiceNamespaceConfig(object):
